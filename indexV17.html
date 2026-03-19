@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DRONE-NET // COMMANDEMENT TACTIQUE v3</title>
+<script src="ether.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@200;400;600;800;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cyan:#00e5ff;--cyan-dim:#0097a7;--cyan-glow:rgba(0,229,255,.18);--cyan-deep:rgba(0,229,255,.06);
+  --green:#00e676;--green-glow:rgba(0,230,118,.2);
+  --orange:#ff9100;--red:#ff1744;--red-glow:rgba(255,23,68,.25);
+  --yellow:#ffd600;--purple:#d500f9;
+  --bg:#020812;--bg2:#040d1a;--panel:rgba(4,16,36,.95);
+  --border:rgba(0,229,255,.14);--border-h:rgba(0,229,255,.45);
+  --text:#b0bec5;--text-h:#eceff1;
+  --mono:'Share Tech Mono',monospace;--ui:'Exo 2',sans-serif;--head:'Orbitron',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--ui);overflow:hidden;height:100vh;width:100vw}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(0,180,255,.07) 0%,transparent 70%)}
+.scanline{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.025) 2px,rgba(0,0,0,.025) 4px)}
+
+/* ═══ BOOT ═══ */
+#boot{position:fixed;inset:0;z-index:999;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .8s}
+#boot.out{opacity:0;pointer-events:none}
+.b-logo{font-family:var(--head);font-size:clamp(20px,4vw,42px);color:var(--cyan);letter-spacing:8px;text-shadow:0 0 40px var(--cyan);margin-bottom:6px;animation:lp 2s ease-in-out infinite}
+@keyframes lp{0%,100%{opacity:1}50%{opacity:.6}}
+.b-sub{font-family:var(--mono);color:var(--cyan-dim);font-size:11px;letter-spacing:4px;margin-bottom:40px}
+.b-log{font-family:var(--mono);font-size:11px;width:440px;max-width:90vw;height:170px;overflow:hidden;border:1px solid rgba(76,175,80,.2);padding:10px 14px;border-radius:4px;background:rgba(0,20,0,.5);line-height:1.9}
+.b-bw{width:440px;max-width:90vw;height:2px;background:rgba(0,229,255,.08);border-radius:2px;margin-top:16px;overflow:hidden}
+.b-b{height:100%;background:linear-gradient(90deg,var(--cyan-dim),var(--cyan));width:0%;box-shadow:0 0 10px var(--cyan);transition:width .1s linear}
+
+/* ═══ LOGIN ═══ */
+#login{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+.lc{width:440px;max-width:95vw;background:var(--panel);border:1px solid var(--border-h);border-radius:4px;padding:44px 36px;text-align:center;box-shadow:0 0 60px rgba(0,229,255,.08);position:relative;overflow:hidden}
+.lc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);animation:ts 3s ease-in-out infinite}
+@keyframes ts{0%,100%{opacity:.4}50%{opacity:1}}
+.lc-ico{font-size:44px;margin-bottom:16px;filter:drop-shadow(0 0 20px var(--cyan))}
+.lc-t{font-family:var(--head);font-size:17px;color:var(--cyan);letter-spacing:4px;margin-bottom:6px}
+.lc-s{font-family:var(--mono);font-size:10px;color:var(--cyan-dim);letter-spacing:2px;margin-bottom:28px}
+.lc-w{font-family:var(--mono);font-size:10px;color:var(--orange);background:rgba(255,145,0,.05);border:1px solid rgba(255,145,0,.2);border-radius:3px;padding:8px 12px;margin-bottom:18px;text-align:left}
+.btn-cx{width:100%;padding:14px;background:transparent;border:1px solid var(--cyan);color:var(--cyan);font-family:var(--head);font-size:12px;letter-spacing:3px;cursor:pointer;border-radius:3px;transition:all .3s}
+.btn-cx:hover{background:rgba(0,229,255,.08);box-shadow:0 0 28px rgba(0,229,255,.2)}
+
+/* ═══ APP ═══ */
+#app{display:none;height:100vh;flex-direction:column;position:relative;z-index:2}
+#app.on{display:flex}
+
+/* ── TOPBAR ── */
+.tb{height:50px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:rgba(2,8,18,.97);border-bottom:1px solid var(--border);backdrop-filter:blur(12px);flex-shrink:0;gap:12px}
+.tb-brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.tb-mark{width:30px;height:30px;border:1px solid var(--cyan);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 0 12px rgba(0,229,255,.2);animation:mp 3s ease-in-out infinite}
+@keyframes mp{0%,100%{box-shadow:0 0 12px rgba(0,229,255,.2)}50%{box-shadow:0 0 22px rgba(0,229,255,.45)}}
+.tb-bt{font-family:var(--head);font-size:12px;color:var(--cyan);letter-spacing:3px}
+.tb-bs{font-family:var(--mono);font-size:8px;color:var(--cyan-dim);letter-spacing:2px}
+.tb-mid{display:flex;gap:12px;align-items:center;flex:1;justify-content:center}
+.sc{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;padding:4px 10px;border:1px solid var(--border);border-radius:2px;background:var(--cyan-deep)}
+.sc .v{color:var(--cyan);font-size:12px;font-weight:bold}.sc .l{color:var(--text);font-size:8px;letter-spacing:1px}
+.tb-r{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.clk{font-family:var(--mono);font-size:11px;color:var(--cyan);letter-spacing:2px}
+.cb{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;padding:4px 10px;border:1px solid rgba(0,230,118,.3);border-radius:2px;color:var(--green);background:rgba(0,230,118,.05)}
+.dl{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:lb 1.5s ease-in-out infinite}
+@keyframes lb{0%,100%{opacity:1}50%{opacity:.3}}
+.btn-tb{padding:5px 10px;background:transparent;font-family:var(--mono);font-size:9px;letter-spacing:1.5px;cursor:pointer;border-radius:2px;transition:all .2s}
+.btn-help{border:1px solid rgba(0,229,255,.4);color:var(--cyan)}
+.btn-help:hover{background:rgba(0,229,255,.08)}
+.btn-rb{border:1px solid rgba(255,23,68,.4);color:var(--red)}
+.btn-rb:hover{background:rgba(255,23,68,.1)}
+
+/* ── WORKSPACE ── */
+.ws{flex:1;display:grid;grid-template-columns:240px 1fr 260px;grid-template-rows:1fr 220px;gap:1px;background:var(--border);overflow:hidden;min-height:0}
+.panel{background:var(--bg2);overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;min-height:0}
+.panel::-webkit-scrollbar{width:3px}
+.panel::-webkit-scrollbar-thumb{background:var(--border-h)}
+.ph{padding:10px 14px 9px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--bg2);position:sticky;top:0;z-index:5}
+.pt{font-family:var(--head);font-size:9px;color:var(--cyan);letter-spacing:3px}
+.ptag{font-family:var(--mono);font-size:8px;color:var(--cyan-dim);background:var(--cyan-deep);border:1px solid var(--border);padding:2px 5px;border-radius:2px}
+
+/* ── LEFT ── */
+#pl{grid-column:1;grid-row:1/3}
+.oc{padding:14px;border-bottom:1px solid var(--border)}
+.oa{width:44px;height:44px;border-radius:3px;background:linear-gradient(135deg,var(--cyan-deep),rgba(0,80,180,.2));border:1px solid var(--border-h);display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:10px;box-shadow:0 0 14px var(--cyan-glow)}
+.on{font-family:var(--head);font-size:12px;color:var(--text-h);letter-spacing:2px;margin-bottom:3px}
+.or{font-family:var(--mono);font-size:9px;letter-spacing:2px;padding:2px 6px;border-radius:2px;display:inline-block;margin-bottom:5px}
+.r-a{color:var(--red);background:rgba(255,23,68,.08);border:1px solid rgba(255,23,68,.3)}
+.r-p{color:var(--cyan);background:var(--cyan-deep);border:1px solid var(--border-h)}
+.r-t{color:var(--orange);background:rgba(255,145,0,.08);border:1px solid rgba(255,145,0,.3)}
+.oad{font-family:var(--mono);font-size:8px;color:var(--cyan-dim);word-break:break-all;opacity:.7}
+.fs{padding:10px 14px;border-bottom:1px solid var(--border)}
+.fst{font-family:var(--mono);font-size:9px;color:var(--cyan-dim);letter-spacing:2px;margin-bottom:8px}
+.field{margin-bottom:7px}
+.field label{display:block;font-size:9px;color:var(--text);margin-bottom:3px;letter-spacing:1px}
+input[type=text],select{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--border);color:var(--text-h);padding:6px 10px;border-radius:2px;font-family:var(--mono);font-size:11px;transition:border-color .2s;appearance:none}
+input[type=text]:focus,select:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 8px var(--cyan-glow)}
+select option{background:#040d1a}
+.btn{padding:6px 10px;border-radius:2px;cursor:pointer;font-family:var(--mono);font-size:9px;letter-spacing:1.5px;transition:all .2s;border:1px solid transparent;display:inline-flex;align-items:center;gap:4px}
+.bf{width:100%;justify-content:center}
+.bc{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-deep)}
+.bc:hover{background:rgba(0,229,255,.15);box-shadow:0 0 14px var(--cyan-glow)}
+.bg{border-color:var(--green);color:var(--green);background:rgba(0,230,118,.05)}
+.bg:hover{background:rgba(0,230,118,.12);box-shadow:0 0 14px var(--green-glow)}
+.br{border-color:var(--red);color:var(--red);background:rgba(255,23,68,.05)}
+.br:hover{background:rgba(255,23,68,.12);box-shadow:0 0 14px var(--red-glow)}
+.bo{border-color:var(--orange);color:var(--orange);background:rgba(255,145,0,.05)}
+.bo:hover{background:rgba(255,145,0,.12)}
+.bp{border-color:var(--purple);color:var(--purple);background:rgba(213,0,249,.05)}
+.bp:hover{background:rgba(213,0,249,.12);box-shadow:0 0 14px rgba(213,0,249,.2)}
+.bs{padding:4px 7px;font-size:8px}
+button:disabled{opacity:.3;cursor:not-allowed}
+.dsi{padding:7px 12px;border-bottom:1px solid rgba(0,229,255,.05);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background .15s}
+.dsi:hover{background:rgba(0,229,255,.04)}
+.dsi.active{background:rgba(0,229,255,.08);border-left:2px solid var(--cyan)}
+.dsi-n{font-family:var(--mono);font-size:10px;color:var(--text-h)}
+.dsi-s{font-family:var(--mono);font-size:8px}
+.dsi-s.on{color:var(--green)}.dsi-s.mo{color:var(--orange)}.dsi-s.dd{color:var(--red)}
+
+/* ── CENTER TOP: RADAR ── */
+#pct{grid-column:2;grid-row:1;position:relative;background:#000;overflow:hidden;min-height:0}
+#radar{position:absolute;top:0;left:0;width:100%;height:100%;overflow:hidden}
+.ro{position:absolute;top:0;left:0;right:0;display:flex;align-items:flex-start;justify-content:space-between;padding:10px 14px;pointer-events:none}
+.ri{font-family:var(--mono);font-size:9px;color:var(--cyan);line-height:2}
+.rl{display:flex;flex-direction:column;gap:3px;align-items:flex-end}
+.rli{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:8px;color:var(--text)}
+.rld{width:7px;height:7px;border-radius:50%}
+.kb-hint{position:absolute;bottom:10px;left:12px;pointer-events:none;font-family:var(--mono);font-size:8px;color:rgba(0,229,255,.35);line-height:1.9}
+.sel-hud{position:absolute;bottom:10px;right:12px;pointer-events:none;background:rgba(4,16,36,.92);border:1px solid var(--border-h);border-radius:3px;padding:8px 12px;min-width:170px}
+.sh-t{font-family:var(--head);font-size:8px;color:var(--cyan);letter-spacing:2px;margin-bottom:5px}
+.sh-r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;margin-bottom:2px}
+.sh-l{color:var(--text)}.sh-v{color:var(--text-h)}
+
+/* ── CENTER BOTTOM: FPV ── */
+#pcb{grid-column:2;grid-row:2;position:relative;background:#000;overflow:hidden}
+#fpv{width:100%;height:100%;display:block}
+.fpv-hud{position:absolute;inset:0;pointer-events:none}
+/* Crosshair */
+.fpv-cross{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:30px;height:30px}
+.fpv-cross::before,.fpv-cross::after{content:'';position:absolute;background:rgba(0,229,255,.5)}
+.fpv-cross::before{width:1px;height:100%;left:50%;transform:translateX(-50%)}
+.fpv-cross::after{height:1px;width:100%;top:50%;transform:translateY(-50%)}
+/* Corners */
+.fpv-corn{position:absolute;inset:6px}
+.fpv-corn::before,.fpv-corn::after{content:'';position:absolute;width:14px;height:14px;border-color:rgba(0,229,255,.45);border-style:solid}
+.fpv-corn::before{top:0;left:0;border-width:1px 0 0 1px}
+.fpv-corn::after{bottom:0;right:0;border-width:0 1px 1px 0}
+/* Info overlays */
+.fpv-tl{position:absolute;top:8px;left:12px;font-family:var(--mono);font-size:9px;color:rgba(0,229,255,.75);line-height:1.9}
+.fpv-tr{position:absolute;top:8px;right:12px;font-family:var(--mono);font-size:9px;color:rgba(0,229,255,.75);text-align:right;line-height:1.9}
+.fpv-label{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);font-family:var(--head);font-size:8px;color:rgba(0,229,255,.4);letter-spacing:3px}
+/* Horizon indicator */
+.fpv-horizon{position:absolute;top:50%;left:10%;right:10%;height:1px;background:rgba(0,229,255,.25);transform-origin:center;transition:transform .1s}
+/* Lock reticle */
+#lock-reticle{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:none;pointer-events:none}
+.lock-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border:1px solid rgba(255,23,68,.7);border-radius:50%;animation:lockPulse 1s ease-in-out infinite}
+@keyframes lockPulse{0%,100%{opacity:.5;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}}
+.lock-text{position:absolute;top:50%;left:50%;transform:translate(-50%,30px);font-family:var(--head);font-size:9px;color:rgba(255,23,68,.9);letter-spacing:2px;white-space:nowrap}
+/* Scanline FPV */
+.fpv-scan{position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.25),transparent);animation:fpvScan 2.5s ease-in-out infinite;pointer-events:none}
+@keyframes fpvScan{0%{top:0;opacity:.8}100%{top:100%;opacity:0}}
+/* Compass bar */
+.fpv-compass{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);width:160px;height:18px;overflow:hidden;border:1px solid rgba(0,229,255,.2);background:rgba(0,0,0,.5)}
+.fpv-compass-inner{font-family:var(--mono);font-size:8px;color:rgba(0,229,255,.7);white-space:nowrap;position:absolute;top:50%;transform:translateY(-50%);transition:left .1s}
+.fpv-compass-center{position:absolute;top:0;bottom:0;left:50%;width:1px;background:rgba(0,229,255,.5);transform:translateX(-50%)}
+
+/* ── RIGHT ── */
+#pr{grid-column:3;grid-row:1/3}
+.tac-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:10px 12px;border-bottom:1px solid var(--border)}
+.form-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;padding:8px 12px;border-bottom:1px solid var(--border)}
+.fb{padding:5px 3px;text-align:center;background:rgba(0,0,0,.4);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:8px;cursor:pointer;border-radius:2px;transition:all .2s}
+.fb:hover{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-deep)}
+.fb.active{border-color:var(--purple);color:var(--purple);background:rgba(213,0,249,.08);box-shadow:0 0 8px rgba(213,0,249,.2)}
+.fb-ico{font-size:13px;display:block;margin-bottom:1px}
+.wp-f{padding:8px 12px;border-bottom:1px solid var(--border)}
+.wp-g{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:6px}
+.wp-g input{padding:5px 6px;font-size:10px}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+.sb{background:var(--bg2);padding:10px 8px;text-align:center}
+.sb .n{font-family:var(--head);font-size:22px;color:var(--cyan);line-height:1;margin-bottom:2px;text-shadow:0 0 14px var(--cyan-glow)}
+.sb .l{font-family:var(--mono);font-size:8px;color:var(--text);letter-spacing:1.5px}
+.sb.g .n{color:var(--green);text-shadow:0 0 14px var(--green-glow)}
+.sb.o .n{color:var(--orange)}.sb.r .n{color:var(--red)}.sb.p .n{color:var(--purple)}
+.txf{overflow-y:auto;max-height:140px}
+.txf::-webkit-scrollbar{width:2px}
+.txf::-webkit-scrollbar-thumb{background:var(--border-h)}
+.txi{padding:7px 12px;border-bottom:1px solid rgba(0,229,255,.05);animation:txs .3s ease}
+@keyframes txs{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+.txr{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
+.txt{font-family:var(--mono);font-size:9px;letter-spacing:1px}
+.txt.p{color:var(--yellow)}.txt.s{color:var(--green)}.txt.e{color:var(--red)}
+.txtime{font-family:var(--mono);font-size:8px;color:rgba(176,190,197,.35)}
+.txd{font-size:9px;color:var(--text);margin-bottom:2px}
+.txh{font-family:var(--mono);font-size:8px;color:rgba(0,229,255,.3);word-break:break-all}
+.tl{padding:8px 12px}
+.tli{display:flex;gap:7px;padding-bottom:12px;position:relative}
+.tli::before{content:'';position:absolute;left:4px;top:11px;bottom:0;width:1px;background:var(--border)}
+.tli:last-child::before{display:none}
+.tld{width:9px;height:9px;border-radius:50%;border:2px solid var(--cyan);background:var(--bg2);flex-shrink:0;margin-top:1px;box-shadow:0 0 5px var(--cyan-glow)}
+.tlc{flex:1}
+.tla{font-family:var(--mono);font-size:9px;color:var(--cyan);letter-spacing:1px;margin-bottom:1px}
+.tldt{font-size:9px;color:var(--text);margin-bottom:1px}
+.tlti{font-family:var(--mono);font-size:8px;color:rgba(176,190,197,.35)}
+
+/* ── TOAST ── */
+#tc{position:fixed;bottom:18px;right:18px;z-index:300;display:flex;flex-direction:column;gap:5px;pointer-events:none}
+.toast{background:var(--panel);border-radius:3px;padding:9px 13px;min-width:240px;max-width:300px;border-left:3px solid var(--cyan);box-shadow:0 6px 24px rgba(0,0,0,.5);animation:tIn .3s cubic-bezier(.34,1.56,.64,1);pointer-events:all;display:flex;gap:7px;align-items:flex-start}
+.toast.s{border-left-color:var(--green)}.toast.e{border-left-color:var(--red)}.toast.w{border-left-color:var(--orange)}.toast.p{border-left-color:var(--purple)}
+@keyframes tIn{from{opacity:0;transform:translateX(20px) scale(.95)}to{opacity:1;transform:none}}
+.t-t{font-family:var(--mono);font-size:9px;letter-spacing:1px;margin-bottom:2px}
+.toast.s .t-t{color:var(--green)}.toast.e .t-t{color:var(--red)}.toast.w .t-t{color:var(--orange)}.toast.p .t-t{color:var(--purple)}
+.t-m{font-size:9px;color:var(--text)}
+
+/* ══ HELP MODAL ══ */
+#help-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+#help-modal.on{display:flex}
+.hm{width:780px;max-width:96vw;max-height:88vh;background:var(--bg2);border:1px solid var(--border-h);border-radius:4px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 60px rgba(0,229,255,.1)}
+.hm-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.hm-title{font-family:var(--head);font-size:14px;color:var(--cyan);letter-spacing:4px}
+.hm-close{padding:5px 12px;background:transparent;border:1px solid rgba(255,23,68,.4);color:var(--red);font-family:var(--mono);font-size:10px;cursor:pointer;border-radius:2px;transition:all .2s}
+.hm-close:hover{background:rgba(255,23,68,.1)}
+.hm-body{overflow-y:auto;padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.hm-body::-webkit-scrollbar{width:4px}
+.hm-body::-webkit-scrollbar-thumb{background:var(--border-h)}
+.hm-section{border:1px solid var(--border);border-radius:3px;overflow:hidden}
+.hm-section.full{grid-column:1/3}
+.hm-s-head{padding:9px 14px;background:var(--cyan-deep);border-bottom:1px solid var(--border);font-family:var(--head);font-size:9px;color:var(--cyan);letter-spacing:3px}
+.hm-s-body{padding:12px 14px}
+.hm-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(0,229,255,.05)}
+.hm-row:last-child{border-bottom:none}
+.hm-key{font-family:var(--mono);font-size:10px;color:var(--cyan);background:rgba(0,229,255,.08);border:1px solid var(--border-h);border-radius:2px;padding:2px 7px;min-width:60px;text-align:center}
+.hm-desc{font-size:11px;color:var(--text-h)}
+.hm-role{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(0,229,255,.05)}
+.hm-role:last-child{border-bottom:none}
+.hm-role-ico{font-size:20px;flex-shrink:0}
+.hm-role-name{font-family:var(--head);font-size:10px;letter-spacing:2px;margin-bottom:3px}
+.hm-role-desc{font-size:11px;color:var(--text);line-height:1.5}
+.hm-step{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid rgba(0,229,255,.05)}
+.hm-step:last-child{border-bottom:none}
+.hm-step-n{font-family:var(--head);font-size:13px;color:var(--cyan);flex-shrink:0;width:24px}
+.hm-step-t{font-family:var(--mono);font-size:10px;color:var(--cyan);margin-bottom:3px;letter-spacing:1px}
+.hm-step-d{font-size:11px;color:var(--text)}
+.badge{font-family:var(--mono);font-size:8px;padding:2px 6px;border-radius:2px;display:inline-block;margin-right:4px}
+.badge-a{color:var(--red);background:rgba(255,23,68,.1);border:1px solid rgba(255,23,68,.3)}
+.badge-p{color:var(--cyan);background:var(--cyan-deep);border:1px solid var(--border-h)}
+.badge-t{color:var(--orange);background:rgba(255,145,0,.1);border:1px solid rgba(255,145,0,.3)}
+
+/* Misc */
+.empty{padding:20px;text-align:center;font-family:var(--mono);font-size:10px;color:rgba(176,190,197,.3);letter-spacing:1px}
+.spin{display:inline-block;width:10px;height:10px;border:1px solid rgba(0,229,255,.2);border-top-color:var(--cyan);border-radius:50%;animation:sp .8s linear infinite;vertical-align:middle}
+@keyframes sp{to{transform:rotate(360deg)}}
+.sep{height:1px;background:var(--border)}
+.slbl{font-family:var(--mono);font-size:8px;color:var(--text);letter-spacing:2px;padding:6px 14px 4px;opacity:.45}
+.ab{background:rgba(255,23,68,.08);border:1px solid rgba(255,23,68,.3);border-radius:3px;padding:6px 10px;margin:5px 12px;font-family:var(--mono);font-size:9px;color:var(--red);display:flex;align-items:center;gap:5px;animation:ap 2s ease-in-out infinite}
+@keyframes ap{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px rgba(255,23,68,.2)}}
+body.am{--cyan:#ff1744;--cyan-dim:#c62828;--cyan-glow:rgba(255,23,68,.18);--cyan-deep:rgba(255,23,68,.06);--border:rgba(255,23,68,.14);--border-h:rgba(255,23,68,.45)}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+
+<!-- BOOT -->
+<div id="boot">
+  <div class="b-logo">DRONE-NET</div>
+  <div class="b-sub">COMMANDEMENT TACTIQUE v3.0 // FULL TACTICAL</div>
+  <div class="b-log" id="bl"></div>
+  <div class="b-bw"><div class="b-b" id="bb"></div></div>
+</div>
+
+<!-- LOGIN -->
+<div id="login" class="hidden">
+  <div class="lc">
+    <div class="lc-ico">🛰️</div>
+    <div class="lc-t">ACCÈS SÉCURISÉ</div>
+    <div class="lc-s">AUTHENTIFICATION CRYPTOGRAPHIQUE REQUISE</div>
+    <div class="lc-w">⚠ Session chiffrée E2E — toutes les actions sont auditées sur la blockchain Ethereum.</div>
+    <button class="btn-cx" onclick="connectWallet()">⬡ ACTIVER TERMINAL SÉCURISÉ</button>
+  </div>
+</div>
+
+<!-- HELP MODAL -->
+<div id="help-modal">
+  <div class="hm">
+    <div class="hm-head">
+      <div class="hm-title">MANUEL OPÉRATEUR // DRONE-NET v3</div>
+      <button class="hm-close" onclick="closeHelp()">✕ FERMER</button>
+    </div>
+    <div class="hm-body">
+
+      <div class="hm-section">
+        <div class="hm-s-head">// CLAVIER — PILOTAGE</div>
+        <div class="hm-s-body">
+          <div class="hm-row"><span class="hm-key">Z / ↑</span><span class="hm-desc">Déplacer drone vers le Nord</span></div>
+          <div class="hm-row"><span class="hm-key">S / ↓</span><span class="hm-desc">Déplacer drone vers le Sud</span></div>
+          <div class="hm-row"><span class="hm-key">Q / ←</span><span class="hm-desc">Déplacer drone vers l'Ouest</span></div>
+          <div class="hm-row"><span class="hm-key">D / →</span><span class="hm-desc">Déplacer drone vers l'Est</span></div>
+          <div class="hm-row"><span class="hm-key">A</span><span class="hm-desc">Monter en altitude (+20m)</span></div>
+          <div class="hm-row"><span class="hm-key">E</span><span class="hm-desc">Descendre en altitude (-20m)</span></div>
+          <div class="hm-row"><span class="hm-key">TAB</span><span class="hm-desc">Sélectionner le drone suivant</span></div>
+          <div class="hm-row"><span class="hm-key">R</span><span class="hm-desc">Lancer un scan de reconnaissance</span></div>
+          <div class="hm-row"><span class="hm-key">F</span><span class="hm-desc">Stop — Drone en attente</span></div>
+        </div>
+      </div>
+
+      <div class="hm-section">
+        <div class="hm-s-head">// RÔLES OPÉRATEURS</div>
+        <div class="hm-s-body">
+          <div class="hm-role">
+            <div class="hm-role-ico">⭐</div>
+            <div><div class="hm-role-name" style="color:var(--red)">COMMANDANT ADMIN</div>
+            <div class="hm-role-desc">Déploie les unités, gère la maintenance, archive les drones. Accès total à toutes les fonctions tactiques.</div></div>
+          </div>
+          <div class="hm-role">
+            <div class="hm-role-ico">🎮</div>
+            <div><div class="hm-role-name" style="color:var(--cyan)">PILOTE TACTIQUE</div>
+            <div class="hm-role-desc">Pilote les drones (ZQSD), lance des scans, envoie des waypoints, active formations et mode essaim.</div></div>
+          </div>
+          <div class="hm-role">
+            <div class="hm-role-ico">🔧</div>
+            <div><div class="hm-role-name" style="color:var(--orange)">TECHNICIEN SOL</div>
+            <div class="hm-role-desc">Maintenance des unités. Pas d'accès aux commandes de vol.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hm-section">
+        <div class="hm-s-head">// COMMANDES TACTIQUES</div>
+        <div class="hm-s-body">
+          <div class="hm-row"><span class="hm-key">SCAN</span><span class="hm-desc">Lance une reconnaissance de la zone — status: SCAN_EN_COURS</span></div>
+          <div class="hm-row"><span class="hm-key">STOP</span><span class="hm-desc">Drone en stationnaire — status: EN_ATTENTE</span></div>
+          <div class="hm-row"><span class="hm-key">ESSAIM</span><span class="hm-desc">Tous les drones actifs suivent le drone sélectionné</span></div>
+          <div class="hm-row"><span class="hm-key">WAYPOINT</span><span class="hm-desc">Envoie le drone vers une coordonnée précise (X, Y, Altitude)</span></div>
+          <div class="hm-row"><span class="hm-key">LOCK 🎯</span><span class="hm-desc">Verrouille une cible — le drone fonce aux coordonnées</span></div>
+          <div class="hm-row"><span class="hm-key">URGENCE</span><span class="hm-desc">Rappel immédiat — met le drone en maintenance forcée</span></div>
+        </div>
+      </div>
+
+      <div class="hm-section">
+        <div class="hm-s-head">// FORMATIONS</div>
+        <div class="hm-s-body">
+          <div class="hm-row"><span class="hm-key">LIBRE</span><span class="hm-desc">Chaque drone vole de façon autonome</span></div>
+          <div class="hm-row"><span class="hm-key">V ⋁</span><span class="hm-desc">Formation en V — chef en tête, flancs gauche/droit</span></div>
+          <div class="hm-row"><span class="hm-key">LIGNE ═</span><span class="hm-desc">Formation en ligne — tous alignés horizontalement</span></div>
+          <div class="hm-row"><span class="hm-key">CERCLE ◎</span><span class="hm-desc">Formation circulaire — protection périmétrique</span></div>
+        </div>
+      </div>
+
+      <div class="hm-section full">
+        <div class="hm-s-head">// WORKFLOW DE MISSION — CYCLE COMPLET</div>
+        <div class="hm-s-body" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
+          <div class="hm-step"><div class="hm-step-n">①</div><div><div class="hm-step-t">DÉPLOIEMENT</div><div class="hm-step-d"><span class="badge badge-a">ADMIN</span>Crée l'unité sur la blockchain. État initial: EN VOL.</div></div></div>
+          <div class="hm-step"><div class="hm-step-n">②</div><div><div class="hm-step-t">OPÉRATION</div><div class="hm-step-d"><span class="badge badge-p">PILOTE</span>ZQSD pour piloter. Batterie baisse, température monte.</div></div></div>
+          <div class="hm-step"><div class="hm-step-n">③</div><div><div class="hm-step-t">ALERTE</div><div class="hm-step-d"><span class="badge badge-p">AUTO</span>Batterie &lt;20% → alerte rouge. Interface en mode urgence.</div></div></div>
+          <div class="hm-step"><div class="hm-step-n">④</div><div><div class="hm-step-t">MAINTENANCE</div><div class="hm-step-d"><span class="badge badge-a">ADMIN</span>Bascule le drone en maintenance. Technicien recharge.</div></div></div>
+          <div class="hm-step"><div class="hm-step-n">⑤</div><div><div class="hm-step-t">AUDIT</div><div class="hm-step-d"><span class="badge badge-a">TOUS</span>Journal de mission immuable — traçabilité blockchain.</div></div></div>
+        </div>
+      </div>
+
+      <div class="hm-section full">
+        <div class="hm-s-head">// VUE FPV — MONDE 3D IMMERSIF</div>
+        <div class="hm-s-body" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div class="hm-step"><div class="hm-step-n">🌍</div><div><div class="hm-step-t">TERRAIN 3D</div><div class="hm-step-d">Terrain procédural avec relief (montagnes, vallées). La caméra est attachée au drone sélectionné.</div></div></div>
+          <div class="hm-step"><div class="hm-step-n">🏢</div><div><div class="hm-step-t">ENVIRONNEMENT</div><div class="hm-step-d">Bâtiments, arbres et obstacles générés. Vue rase-motte à basse altitude, panoramique en altitude.</div></div></div>
+          <div class="hm-step"><div class="hm-step-n">🎯</div><div><div class="hm-step-t">HUD OVERLAY</div><div class="hm-step-d">Horizon artificiel, boussole, altimètre. Réticule de verrouillage quand TARGET_LOCKED.</div></div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="tb">
+    <div class="tb-brand">
+      <div class="tb-mark">⬡</div>
+      <div><div class="tb-bt">DRONE-NET</div><div class="tb-bs">COMMANDEMENT TACTIQUE</div></div>
+    </div>
+    <div class="tb-mid">
+      <div class="sc"><div><div class="v" id="s-tot">0</div><div class="l">UNITÉS</div></div></div>
+      <div class="sc"><div><div class="v" style="color:var(--green)" id="s-act">0</div><div class="l">EN VOL</div></div></div>
+      <div class="sc"><div><div class="v" style="color:var(--orange)" id="s-mai">0</div><div class="l">MAINT.</div></div></div>
+      <div class="sc" id="swarm-badge" style="display:none"><div><div class="v" style="color:var(--purple)">⬡</div><div class="l">ESSAIM</div></div></div>
+    </div>
+    <div class="tb-r">
+      <div class="clk" id="clk">--:--:--</div>
+      <div class="cb"><div class="dl"></div><span id="ca">—</span></div>
+      <button class="btn-tb btn-help" onclick="openHelp()">? AIDE</button>
+      <button class="btn-tb btn-rb" onclick="location.reload()">⟳ REBOOT</button>
+    </div>
+  </div>
+
+  <div class="ws">
+
+    <!-- LEFT -->
+    <div class="panel" id="pl">
+      <div class="ph"><div class="pt">OPÉRATEUR</div><div class="ptag">SYS</div></div>
+      <div class="oc">
+        <div class="oa" id="oa">👤</div>
+        <div class="on" id="on">IDENTIFICATION...</div>
+        <div class="or r-p" id="or">INCONNU</div>
+        <div class="oad" id="oad">—</div>
+      </div>
+      <div class="fs hidden" id="rz">
+        <div class="fst">// ENREGISTREMENT</div>
+        <div class="field"><label>IDENTIFIANT</label><input type="text" id="rn" placeholder="NOM_OPÉRATEUR"></div>
+        <div class="field"><label>RÔLE</label>
+          <select id="rr"><option value="1">TECHNICIEN_SOL</option><option value="2">PILOTE_TACTIQUE</option><option value="3">COMMANDANT_ADMIN</option></select>
+        </div>
+        <button class="btn bc bf" onclick="register()">⬡ ENREGISTRER</button>
+      </div>
+      <div class="fs hidden" id="az">
+        <div class="fst">// DÉPLOIEMENT UNITÉ</div>
+        <div class="field"><label>MODÈLE / CALLSIGN</label><input type="text" id="dm" placeholder="ex: PHANTOM-X4"></div>
+        <div class="field"><label>POSITION INITIALE</label><input type="text" id="ds" placeholder="ex: BASE_ALPHA"></div>
+        <button class="btn bg bf" onclick="addDrone()">▲ LANCER UNITÉ</button>
+      </div>
+      <div class="ph"><div class="pt">FLOTTE</div><button class="btn bc bs" onclick="loadFleet()">↻</button></div>
+      <div id="drone-list"><div class="empty">CHARGEMENT...</div></div>
+      <div class="sep"></div>
+      <div class="slbl">// RÉSEAU</div>
+      <div style="padding:6px 14px 10px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text);line-height:2.2">
+          <div>NET: <span style="color:var(--cyan)" id="nn">—</span></div>
+          <div>BLK: <span style="color:var(--cyan)" id="bn">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER TOP: RADAR 3D -->
+    <div id="pct">
+      <div id="radar"></div>
+      <div class="ro">
+        <div class="ri">
+          <div>🛰 RADAR TACTIQUE</div>
+          <div id="r-drones">UNITÉS: 0</div>
+          <div id="r-sel" style="color:var(--yellow)">— NON SÉLECTIONNÉ —</div>
+        </div>
+        <div class="rl">
+          <div class="rli"><div class="rld" style="background:var(--green);box-shadow:0 0 5px var(--green)"></div>EN VOL</div>
+          <div class="rli"><div class="rld" style="background:var(--orange);box-shadow:0 0 5px var(--orange)"></div>MAINT.</div>
+          <div class="rli"><div class="rld" style="background:var(--red);box-shadow:0 0 5px var(--red)"></div>ARCHIVÉ</div>
+          <div class="rli"><div class="rld" style="background:var(--yellow);box-shadow:0 0 5px var(--yellow)"></div>SÉLECT.</div>
+        </div>
+      </div>
+      <div class="kb-hint">ZQSD/↑↓←→: DÉPLACER · A/E: ALT · TAB: DRONE · R: SCAN · F: STOP<br><span id="kb-enter-hint" style="color:rgba(255,214,0,.5)">ENTER: VALIDER POSITION ON-CHAIN</span></div>
+      <div class="sel-hud" id="sel-hud" style="display:none">
+        <div class="sh-t" id="sh-id">UNI-000</div>
+        <div class="sh-r"><span class="sh-l">POS X</span><span class="sh-v" id="sh-x">0</span></div>
+        <div class="sh-r"><span class="sh-l">POS Y</span><span class="sh-v" id="sh-y">0</span></div>
+        <div class="sh-r"><span class="sh-l">ALT</span><span class="sh-v" id="sh-a">100m</span></div>
+        <div class="sh-r"><span class="sh-l">CAP</span><span class="sh-v" id="sh-s">—</span></div>
+        <div class="sh-r"><span class="sh-l">BAT</span><span class="sh-v" id="sh-b">—</span></div>
+        <div id="sh-pending" style="display:none;margin-top:4px;font-family:var(--mono);font-size:8px;color:var(--yellow);animation:ap 1s ease-in-out infinite">⚡ POS. EN ATTENTE — ENTER</div>
+      </div>
+    </div>
+
+    <!-- CENTER BOTTOM: FPV WORLD -->
+    <div id="pcb">
+      <canvas id="fpv"></canvas>
+      <div class="fpv-hud">
+        <div class="fpv-scan"></div>
+        <div class="fpv-cross"></div>
+        <div class="fpv-corn"></div>
+        <div class="fpv-horizon" id="fpv-horizon"></div>
+        <div class="fpv-tl" id="fpv-tl">UNI-???<br>ALT: —<br>VIT: —</div>
+        <div class="fpv-tr" id="fpv-tr">CAP: —<br>TEMP: —<br>BAT: —</div>
+        <div class="fpv-label">VUE CAMÉRA FPV // MONDE IMMERSIF</div>
+        <div class="fpv-compass"><div class="fpv-compass-inner" id="fpv-compass-inner">N&nbsp;&nbsp;&nbsp;NE&nbsp;&nbsp;&nbsp;E&nbsp;&nbsp;&nbsp;SE&nbsp;&nbsp;&nbsp;S&nbsp;&nbsp;&nbsp;SO&nbsp;&nbsp;&nbsp;O&nbsp;&nbsp;&nbsp;NO&nbsp;&nbsp;&nbsp;N&nbsp;&nbsp;&nbsp;NE&nbsp;&nbsp;&nbsp;E</div><div class="fpv-compass-center"></div></div>
+        <div id="lock-reticle">
+          <div class="lock-ring" style="width:50px;height:50px"></div>
+          <div class="lock-ring" style="width:70px;height:70px;animation-delay:.3s"></div>
+          <div class="lock-text">TARGET LOCKED</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="panel" id="pr">
+      <div class="ph"><div class="pt">COMMANDEMENT</div><div class="ptag">TAC</div></div>
+      <div class="tac-grid">
+        <button class="btn bc bs" onclick="cmdRecon()" id="btn-recon" disabled>📡 SCAN</button>
+        <button class="btn bo bs" onclick="cmdStop()" id="btn-stop" disabled>■ STOP</button>
+        <button class="btn bp bs" onclick="cmdSwarm()" id="btn-swarm" disabled>⬡ ESSAIM</button>
+        <button class="btn br bs" onclick="cmdEmergency()" id="btn-emg" disabled>⚠ URGENCE</button>
+      </div>
+      <div class="ph"><div class="pt">FORMATION</div><div class="ptag">TAC</div></div>
+      <div class="form-grid">
+        <div class="fb" id="fb-0" onclick="setFormation(0)"><span class="fb-ico">✕</span>LIBRE</div>
+        <div class="fb" id="fb-1" onclick="setFormation(1)"><span class="fb-ico">⋁</span>V</div>
+        <div class="fb" id="fb-2" onclick="setFormation(2)"><span class="fb-ico">═</span>LIGNE</div>
+        <div class="fb" id="fb-3" onclick="setFormation(3)"><span class="fb-ico">◎</span>CERCLE</div>
+      </div>
+      <div class="ph"><div class="pt">WAYPOINT</div><div class="ptag">NAV</div></div>
+      <div class="wp-f">
+        <div class="wp-g">
+          <div><label style="font-family:var(--mono);font-size:8px;color:var(--text);display:block;margin-bottom:3px">POS X</label><input type="text" id="wp-x" placeholder="0"></div>
+          <div><label style="font-family:var(--mono);font-size:8px;color:var(--text);display:block;margin-bottom:3px">POS Y</label><input type="text" id="wp-y" placeholder="0"></div>
+          <div><label style="font-family:var(--mono);font-size:8px;color:var(--text);display:block;margin-bottom:3px">ALT</label><input type="text" id="wp-a" placeholder="100"></div>
+        </div>
+        <button class="btn bc bf bs" onclick="cmdWaypoint()" id="btn-wp" disabled>▶ ENVOYER WAYPOINT</button>
+      </div>
+      <div class="ph"><div class="pt">INTERCEPTION</div><div class="ptag">LOCK</div></div>
+      <div class="wp-f">
+        <div class="wp-g" style="grid-template-columns:1fr 1fr 80px">
+          <div><label style="font-family:var(--mono);font-size:8px;color:var(--text);display:block;margin-bottom:3px">CIBLE X</label><input type="text" id="tg-x" placeholder="0"></div>
+          <div><label style="font-family:var(--mono);font-size:8px;color:var(--text);display:block;margin-bottom:3px">CIBLE Y</label><input type="text" id="tg-y" placeholder="0"></div>
+          <div style="display:flex;align-items:flex-end"><button class="btn br bf bs" onclick="cmdLockTarget()" id="btn-lock" disabled>🎯 LOCK</button></div>
+        </div>
+      </div>
+      <div class="sg">
+        <div class="sb g"><div class="n" id="rs-a">0</div><div class="l">EN VOL</div></div>
+        <div class="sb o"><div class="n" id="rs-m">0</div><div class="l">MAINT.</div></div>
+        <div class="sb"><div class="n" id="rs-o">0</div><div class="l">OPS TX</div></div>
+        <div class="sb r"><div class="n" id="rs-al">0</div><div class="l">ALERTES</div></div>
+      </div>
+      <div class="ph"><div class="pt">FLUX TX</div><div class="dl"></div></div>
+      <div class="txf" id="txf"><div class="empty">EN ATTENTE...</div></div>
+      <div class="ph"><div class="pt">JOURNAL</div><div class="ptag">AUDIT</div></div>
+      <div class="tl" id="tl"><div class="empty">AUCUN ÉVÉNEMENT</div></div>
+    </div>
+
+  </div>
+</div>
+
+<div id="tc"></div>
+
+<script>
+/* ══════════════════════════════════════════
+   CONFIG
+══════════════════════════════════════════ */
+const CONTRACT_ADDRESS = "0x22a87bef616ac8dca2Ca9e2f4bE6630C62Ce5347";
+const ABI = [
+  {"inputs":[{"internalType":"string","name":"_model","type":"string"},{"internalType":"string","name":"_status","type":"string"}],"name":"addDrone","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"_id","type":"uint256"}],"name":"deleteDrone","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"_id","type":"uint256"},{"internalType":"string","name":"_direction","type":"string"}],"name":"moveDrone","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"_id","type":"uint256"},{"internalType":"int256","name":"_targetX","type":"int256"},{"internalType":"int256","name":"_targetY","type":"int256"}],"name":"lockTarget","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"_id","type":"uint256"},{"internalType":"int256","name":"_targetX","type":"int256"},{"internalType":"int256","name":"_targetY","type":"int256"},{"internalType":"int256","name":"_targetAlt","type":"int256"}],"name":"moveToWaypoint","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"uint8","name":"_type","type":"uint8"},{"internalType":"uint256","name":"_leaderId","type":"uint256"}],"name":"setFormation","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"_leaderId","type":"uint256"}],"name":"toggleSwarm","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"string","name":"_name","type":"string"},{"internalType":"uint8","name":"_roleChoice","type":"uint8"}],"name":"registerUser","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"_id","type":"uint256"}],"name":"runReconnaissance","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"_id","type":"uint256"}],"name":"stopAction","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"_id","type":"uint256"}],"name":"toggleMaintenance","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+  {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"drones","outputs":[{"internalType":"uint256","name":"id","type":"uint256"},{"internalType":"string","name":"model","type":"string"},{"internalType":"string","name":"status","type":"string"},{"internalType":"bool","name":"isActive","type":"bool"},{"internalType":"bool","name":"isDeleted","type":"bool"},{"internalType":"int256","name":"posX","type":"int256"},{"internalType":"int256","name":"posY","type":"int256"},{"internalType":"int256","name":"altitude","type":"int256"},{"internalType":"uint8","name":"formationSlot","type":"uint8"}],"stateMutability":"view","type":"function"},
+  {"inputs":[],"name":"dronesCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+  {"inputs":[],"name":"getMyProfile","outputs":[{"internalType":"string","name":"","type":"string"},{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},
+  {"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+  {"inputs":[],"name":"swarmModeActive","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+  {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"users","outputs":[{"internalType":"string","name":"name","type":"string"},{"internalType":"uint8","name":"role","type":"uint8"},{"internalType":"bool","name":"isRegistered","type":"bool"}],"stateMutability":"view","type":"function"}
+];
+
+/* ══ STATE ══ */
+let provider,signer,contract,userRole=0;
+let radarScene,radarRenderer,radarCamera,droneGroup,dronesMeshes={},droneTrails={},oldMeshes={};
+let fpvScene,fpvRenderer,fpvCamera,fpvDroneMesh,fpvTerrain,fpvBuildings=[];
+let droneData={},selectedId=null,swarmActive=false,opsCount=0;
+let keyDown=new Set(),keyTimer=null;
+let audioCtx=null;
+let fpvYaw=0,fpvPitch=0,fpvRoll=0,fpvTargetYaw=0,fpvTargetRoll=0;
+
+/* ══ HELP ══ */
+function openHelp(){document.getElementById('help-modal').classList.add('on')}
+function closeHelp(){document.getElementById('help-modal').classList.remove('on')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeHelp()});
+
+/* ══ AUDIO ══ */
+function initAudio(){try{audioCtx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}}
+function beep(f=440,d=.08,t='square',v=.05){
+  if(!audioCtx)return;
+  try{const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);o.type=t;o.frequency.value=f;
+  g.gain.setValueAtTime(v,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+d);
+  o.start();o.stop(audioCtx.currentTime+d)}catch(e){}}
+function alertSiren(){[400,600,400,600].forEach((f,i)=>setTimeout(()=>beep(f,.2,'sawtooth',.05),i*220))}
+function moveBeep(){beep(880,.04,'square',.03)}
+function lockBeep(){beep(1200,.15,'square',.07);setTimeout(()=>beep(1600,.15,'square',.07),160)}
+function radarPing(){beep(1000,.06,'sine',.04)}
+
+/* ══ BOOT ══ */
+const BOOT=[
+  {t:"[OK] Noyau DRONE-NET v3.0 initialisé...",c:"#4caf50"},
+  {t:"[OK] Bibliothèques cryptographiques chargées...",c:"#4caf50"},
+  {t:"[OK] Interface Ethereum Web3 détectée...",c:"#4caf50"},
+  {t:"[OK] Moteur 3D radar initialisé...",c:"#4caf50"},
+  {t:"[OK] Moteur FPV monde immersif initialisé...",c:"#4caf50"},
+  {t:"[OK] Terrain procédural généré (512x512)...",c:"#4caf50"},
+  {t:"[OK] Bâtiments et obstacles chargés...",c:"#4caf50"},
+  {t:"[OK] Clavier tactique ZQSD/flèches lié...",c:"#4caf50"},
+  {t:"[OK] Système audio embarqué activé...",c:"#4caf50"},
+  {t:"[WAIT] En attente d'authentification opérateur...",c:"#ffd600"},
+];
+async function runBoot(){
+  const log=document.getElementById('bl'),bar=document.getElementById('bb');
+  for(let i=0;i<BOOT.length;i++){
+    await delay(250+Math.random()*180);
+    const ln=document.createElement('div');ln.style.color=BOOT[i].c;ln.textContent=BOOT[i].t;
+    log.appendChild(ln);log.scrollTop=log.scrollHeight;
+    bar.style.width=((i+1)/BOOT.length*100)+'%';
+  }
+  await delay(500);
+  const b=document.getElementById('boot');b.classList.add('out');
+  await delay(800);b.style.display='none';
+  document.getElementById('login').classList.remove('hidden');
+}
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ══ CLOCK ══ */
+function startClock(){
+  const t=()=>document.getElementById('clk').textContent=new Date().toLocaleTimeString('fr-FR',{hour12:false});
+  t();setInterval(t,1000);
+}
+
+/* ══ WALLET ══ */
+async function connectWallet(){
+  try{
+    initAudio();
+    provider=new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts",[]);
+    signer=provider.getSigner();
+    contract=new ethers.Contract(CONTRACT_ADDRESS,ABI,signer);
+    const addr=await signer.getAddress();
+    const net=await provider.getNetwork();
+    const blk=await provider.getBlockNumber();
+    document.getElementById('ca').textContent=addr.slice(0,6)+'…'+addr.slice(-4);
+    document.getElementById('oad').textContent=addr;
+    document.getElementById('nn').textContent=net.name.toUpperCase();
+    document.getElementById('bn').textContent='#'+blk;
+    document.getElementById('login').classList.add('hidden');
+    document.getElementById('app').classList.add('on');
+    startClock();bindKeys();
+    // Étape 1 (50ms) : init les renderers 3D une fois le layout calculé
+    setTimeout(()=>{
+      initRadar();
+      initFPVWorld();
+      // Étape 2 (200ms) : charger la flotte APRÈS que les renderers sont prêts
+      setTimeout(()=>checkProfile(), 200);
+    },50);
+    setInterval(async()=>{try{document.getElementById('bn').textContent='#'+await provider.getBlockNumber()}catch(e){}},12000);
+    toast('s','CONNEXION ÉTABLIE',addr.slice(0,6)+'… authentifié');
+    addTL('CONNEXION','Opérateur '+addr.slice(0,6)+'… — réseau '+net.name,'cyan');
+    beep(660,.1,'sine',.08);
+  }catch(e){toast('e','ÉCHEC CONNEXION',(e.message||'').slice(0,60))}
+}
+
+/* ══ PROFILE ══ */
+async function checkProfile(){
+  try{
+    const p=await contract.getMyProfile();userRole=p[1];
+    const N=['','TECHNICIEN_SOL','PILOTE_TACTIQUE','COMMANDANT'];
+    const C=['','r-t','r-p','r-a'];const E=['','🔧','🎮','⭐'];
+    if(p[0]!==''){
+      document.getElementById('on').textContent=p[0].toUpperCase();
+      const el=document.getElementById('or');el.textContent=N[userRole]||'INCONNU';
+      el.className='or '+(C[userRole]||'r-p');
+      document.getElementById('oa').textContent=E[userRole]||'👤';
+      if(userRole===3)document.getElementById('az').classList.remove('hidden');
+      loadFleet();
+    }else{document.getElementById('rz').classList.remove('hidden');document.getElementById('on').textContent='NON ENREGISTRÉ'}
+  }catch(e){document.getElementById('rz').classList.remove('hidden')}
+}
+
+/* ══ LOAD FLEET ══ */
+async function loadFleet(){
+  const list=document.getElementById('drone-list');
+  list.innerHTML='<div class="empty"><div class="spin"></div> SYNC...</div>';
+  // Sauvegarder les anciens meshes — NE PAS vider droneGroup
+  // Les anciens meshes restent visibles pendant tout le chargement
+  oldMeshes=Object.assign({},dronesMeshes);
+  dronesMeshes={};
+  const newMeshes={};
+  try{
+    const total=await contract.dronesCount();
+    document.getElementById('s-tot').textContent=total.toString();
+    document.getElementById('r-drones').textContent='UNITÉS: '+total;
+    if(total==0){list.innerHTML='<div class="empty">AUCUNE UNITÉ</div>';return}
+    let cA=0,cM=0,alerts=0;list.innerHTML='';
+    for(let i=1;i<=total;i++){
+      const d=await contract.drones(i);if(d.id==0)continue;
+      const bat=Math.max(5,100-(d.id*13%80));
+      const tmp=35+(d.id*7%45);
+      const low=bat<20;
+      // Positions on-chain — parseInt sur la string BigNumber pour éviter overflow JS
+      let px,py,alt;
+      try{
+        // ethers.js retourne des BigNumber — convertir en string puis parseInt (safe)
+        const rawX=d.posX?d.posX.toString():'0';
+        const rawY=d.posY?d.posY.toString():'0';
+        const rawA=d.altitude?d.altitude.toString():'100';
+        px=parseInt(rawX)||0; py=parseInt(rawY)||0; alt=Math.max(20,parseInt(rawA)||100);
+        // Clamp : si valeur absurde (overflow ou non initialisé), reset à 0
+        if(!isFinite(px)||Math.abs(px)>1e9)px=0;
+        if(!isFinite(py)||Math.abs(py)>1e9)py=0;
+        if(!isFinite(alt)||alt>10000)alt=100;
+      }catch(e){px=0;py=0;alt=100;}
+      // Offset visuel par id — drones toujours visibles et espacés sur le radar
+      const spread=100;
+      px+=Math.cos(i*1.3)*spread;
+      py+=Math.sin(i*1.1)*spread;
+      if(d.isDeleted){}else if(d.isActive)cA++;else cM++;
+      if(low&&!d.isDeleted)alerts++;
+      droneData[i]={id:i,model:d.model,status:d.status,isActive:d.isActive,isDeleted:d.isDeleted,bat,tmp,posX:px,posY:py,alt,heading:0};
+      const item=document.createElement('div');item.className='dsi'+(selectedId===i?' active':'');
+      item.id='dsi-'+i;item.onclick=()=>selectDrone(i);
+      const sc=d.isDeleted?'dd':d.isActive?'on':'mo';
+      const sl=d.isDeleted?'ARCHIVÉ':d.isActive?'EN VOL':'MAINT.';
+      item.innerHTML=`<div><div class="dsi-n">UNI-${String(i).padStart(3,'0')} // ${d.model}</div><div style="font-family:var(--mono);font-size:8px;color:var(--text)">${d.status||'—'}</div></div><div class="dsi-s ${sc}">${sl}</div>`;
+      list.appendChild(item);
+      const c3=d.isDeleted?0xff1744:d.isActive?0x00e676:0xff9100;
+      addDroneRadar(i,px,py,alt,c3,i===selectedId,newMeshes);
+    }
+    document.getElementById('s-act').textContent=cA;document.getElementById('s-mai').textContent=cM;
+    document.getElementById('rs-a').textContent=cA;document.getElementById('rs-m').textContent=cM;
+    document.getElementById('rs-o').textContent=opsCount;document.getElementById('rs-al').textContent=alerts;
+    // Appliquer le mode alerte APRÈS un délai pour ne pas interférer avec le rendu WebGL
+    if(alerts>0){
+      document.body.classList.add('am');
+      setTimeout(()=>alertSiren(),1000);// Délai pour laisser le radar se stabiliser
+    }else{
+      document.body.classList.remove('am');
+    }
+    try{swarmActive=await contract.swarmModeActive();updateSwarmUI()}catch(e){}
+    // Switch atomique — radar passe des anciens aux nouveaux meshes d'un coup
+    dronesMeshes=newMeshes;
+    updateSelHUD();
+    fitRadarCamera();
+    // Supprimer les anciens meshes qui ne sont plus dans la nouvelle flotte
+    Object.keys(oldMeshes).forEach(id=>{
+      if(!dronesMeshes[id]&&droneGroup){
+        droneGroup.remove(oldMeshes[id]);
+        // Nettoyer aussi le trail
+        if(droneTrails[id]&&droneTrails[id].line)radarScene.remove(droneTrails[id].line);
+        delete droneTrails[id];
+      }
+    });
+  }catch(e){
+    list.innerHTML=`<div class="empty">ERR: ${(e.message||'').slice(0,40)}</div>`;
+    toast('e','ERREUR RÉSEAU',(e.message||'').slice(0,50));
+  }
+}
+
+/* ══ SELECT ══ */
+function selectDrone(id){
+  selectedId=id;const d=droneData[id];
+  document.querySelectorAll('.dsi').forEach(el=>el.classList.remove('active'));
+  const el=document.getElementById('dsi-'+id);if(el)el.classList.add('active');
+  const can=d&&d.isActive&&!d.isDeleted&&(userRole==2||userRole==3);
+  ['btn-recon','btn-stop','btn-swarm','btn-emg','btn-wp','btn-lock'].forEach(b=>{const el=document.getElementById(b);if(el)el.disabled=!can});
+  document.getElementById('r-sel').textContent=d?`⬡ UNI-${String(id).padStart(3,'0')} // ${d.model}`:'— NON SÉLECTIONNÉ —';
+  // Highlight radar meshes
+  Object.entries(dronesMeshes).forEach(([mid,m])=>{
+    const sel=parseInt(mid)===id;
+    m.material.emissiveIntensity=sel?1.4:.6;m.scale.setScalar(sel?1.8:1);
+    if(sel)m.material.color.setHex(0xffd600);
+    else{const dd=droneData[parseInt(mid)];if(dd)m.material.color.setHex(dd.isDeleted?0xff1744:dd.isActive?0x00e676:0xff9100)}
+  });
+  updateSelHUD();updateFPVTarget();radarPing();
+}
+
+function updateSelHUD(){
+  const hud=document.getElementById('sel-hud');
+  if(!selectedId||!droneData[selectedId]){hud.style.display='none';return}
+  const d=droneData[selectedId];hud.style.display='block';
+  document.getElementById('sh-id').textContent=`UNI-${String(selectedId).padStart(3,'0')} // ${d.model}`;
+  document.getElementById('sh-x').textContent=d.posX.toFixed(0);
+  document.getElementById('sh-y').textContent=d.posY.toFixed(0);
+  document.getElementById('sh-a').textContent=d.alt+'m';
+  document.getElementById('sh-s').textContent=d.status||'—';
+  document.getElementById('sh-b').textContent=d.bat+'%';
+}
+
+/* ══════════════════════════════════════════
+   RADAR 3D — Three.js scene 1
+══════════════════════════════════════════ */
+function initRadar(){
+  const wrap=document.getElementById('radar');
+  const pct=document.getElementById('pct');
+  const rect=pct.getBoundingClientRect();
+  const W=Math.max(rect.width||800,400);
+  const H=Math.max(rect.height||400,300);
+  radarScene=new THREE.Scene();
+  radarScene.background=new THREE.Color(0x000000);
+  radarScene.fog=new THREE.FogExp2(0x000000,.04);
+  radarCamera=new THREE.PerspectiveCamera(45,W/H,.1,1000);
+  radarCamera.position.set(0,18,28);radarCamera.lookAt(0,0,0);
+  // Renderer direct — pas de canvas manuel, pas d'alpha, pas de preserveDrawingBuffer
+  radarRenderer=new THREE.WebGLRenderer({antialias:true});
+  radarRenderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  radarRenderer.domElement.style.position='absolute';
+  radarRenderer.domElement.style.top='0';
+  radarRenderer.domElement.style.left='0';
+  radarRenderer.domElement.style.display='block';
+  wrap.appendChild(radarRenderer.domElement);
+  // Appliquer la vraie taille après insertion dans le DOM
+  function applyRadarSize(){
+    const r=document.getElementById('pct').getBoundingClientRect();
+    const rW=Math.max(r.width,400), rH=Math.max(r.height,300);
+    radarRenderer.setSize(rW,rH);
+    radarCamera.aspect=rW/rH;
+    radarCamera.updateProjectionMatrix();
+  }
+  applyRadarSize();
+  // Grid
+  const gl=[];for(let i=-20;i<=20;i++){gl.push(-20,0,i,20,0,i,i,0,-20,i,0,20)}
+  const gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.Float32BufferAttribute(gl,3));
+  radarScene.add(new THREE.LineSegments(gg,new THREE.LineBasicMaterial({color:0x00e5ff,transparent:true,opacity:.06})));
+  // Rings
+  for(let r=4;r<=20;r+=4){
+    const rg=new THREE.RingGeometry(r-.02,r+.02,64);
+    const rm=new THREE.MeshBasicMaterial({color:0x00e5ff,transparent:true,opacity:.06,side:THREE.DoubleSide});
+    const ring=new THREE.Mesh(rg,rm);ring.rotation.x=Math.PI/2;radarScene.add(ring);
+  }
+  // Sweep
+  const sv=[];for(let i=0;i<=80;i++){const a=(i/80)*(Math.PI/3);sv.push(0,.05,0,Math.cos(a)*20,.05,Math.sin(a)*20)}
+  const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.Float32BufferAttribute(sv,3));
+  const sweep=new THREE.LineSegments(sg,new THREE.LineBasicMaterial({color:0x00e5ff,transparent:true,opacity:.18}));
+  radarScene.add(sweep);
+  radarScene.add(new THREE.AmbientLight(0x0a1828,1));
+  const pl=new THREE.PointLight(0x00e5ff,.5,60);pl.position.set(0,10,0);radarScene.add(pl);
+  droneGroup=new THREE.Group();radarScene.add(droneGroup);
+  // Click to select
+  radarRenderer.domElement.addEventListener('click',e=>{
+    const rect=radarRenderer.domElement.getBoundingClientRect();
+    const mouse=new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
+    const ray=new THREE.Raycaster();ray.setFromCamera(mouse,radarCamera);
+    const hits=ray.intersectObjects(droneGroup.children,true);
+    if(hits.length>0){let obj=hits[0].object;while(obj.parent&&obj.parent!==droneGroup)obj=obj.parent;if(obj.userData.did)selectDrone(obj.userData.did)}
+  });
+  function radarLoop(){
+    requestAnimationFrame(radarLoop);
+    const t=Date.now()*.0003;
+    radarCamera.position.x=Math.sin(t*.3)*3;radarCamera.lookAt(0,0,0);
+    sweep.rotation.y+=.015;
+    droneGroup.children.forEach((m,i)=>{
+      m.position.y=m.userData.bY+Math.sin(Date.now()*.002+i*1.2)*.12;
+      if(m.userData.glow)m.userData.glow.material.opacity=.25+Math.sin(Date.now()*.003+i)*.12;
+    });
+    radarRenderer.render(radarScene,radarCamera);
+  }
+
+  radarLoop();
+
+
+
+  window.addEventListener('resize',()=>applyRadarSize());
+
+}
+
+function addDroneRadar(id,px,py,alt,color,selected=false,targetMeshes=null){
+  const x=px/10,z=py/10,bY=Math.max(.3,alt/80);
+  const dest=targetMeshes||dronesMeshes;
+  // Recycler le mesh existant — radar jamais vide pendant le chargement
+  if(oldMeshes[id]){
+    const m=oldMeshes[id];
+    m.position.set(x,bY,z);m.userData.bY=bY;
+    m.material.color.setHex(selected?0xffd600:color);
+    m.material.emissive.setHex(selected?0xffd600:color);
+    m.material.emissiveIntensity=selected?1.4:.6;
+    m.scale.setScalar(selected?1.8:1);
+    droneGroup.add(m);// Remettre dans la scène
+    dest[id]=m;
+    return;
+  }
+  const geo=new THREE.OctahedronGeometry(.25,0);
+  const mat=new THREE.MeshPhongMaterial({color:selected?0xffd600:color,emissive:selected?0xffd600:color,emissiveIntensity:selected?1.4:.6,shininess:80});
+  const mesh=new THREE.Mesh(geo,mat);
+  mesh.position.set(x,bY,z);mesh.userData.bY=bY;mesh.userData.did=id;
+  if(selected)mesh.scale.setScalar(1.8);
+  // Glow
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({color:selected?0xffd600:color,transparent:true,opacity:.3}));
+  glow.scale.set(1.4,1.4,1);mesh.add(glow);mesh.userData.glow=glow;
+  // Alt line
+  const lg=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(0,-bY,0)]);
+  mesh.add(new THREE.Line(lg,new THREE.LineBasicMaterial({color,transparent:true,opacity:.2})));
+  // Label
+  const lc=document.createElement('canvas');lc.width=80;lc.height=20;
+  const lx=lc.getContext('2d');lx.font='9px monospace';lx.fillStyle='rgba(0,229,255,.8)';lx.textAlign='center';
+  lx.fillText('UNI-'+String(id).padStart(3,'0'),40,14);
+  const ls=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(lc),transparent:true,opacity:.9}));
+  ls.scale.set(2,.5,1);ls.position.y=.6;mesh.add(ls);
+  droneGroup.add(mesh);dest[id]=mesh;
+}
+
+function fitRadarCamera(){
+  // Caméra fixe à hauteur constante — évite de s'éloigner à l'infini
+  radarCamera.position.set(0,22,30);
+  radarCamera.lookAt(0,0,0);
+}
+
+function addTrail(id,pos){
+  if(!droneTrails[id])droneTrails[id]={pts:[],line:null};
+  const t=droneTrails[id];t.pts.push(pos.clone());
+  if(t.pts.length>50)t.pts.shift();
+  if(t.line)radarScene.remove(t.line);
+  if(t.pts.length<2)return;
+  const geo=new THREE.BufferGeometry().setFromPoints(t.pts);
+  const col=dronesMeshes[id]?dronesMeshes[id].material.color.getHex():0x00e676;
+  t.line=new THREE.Line(geo,new THREE.LineBasicMaterial({color:col,transparent:true,opacity:.4}));
+  radarScene.add(t.line);
+}
+
+/* ══════════════════════════════════════════
+   FPV WORLD — Three.js scene 2 (immersive)
+══════════════════════════════════════════ */
+function initFPVWorld(){
+  const canvas=document.getElementById('fpv');
+  // Attendre que le layout soit calculé avant de lire les dimensions
+  const container=document.getElementById('pcb');
+  const rect=container.getBoundingClientRect();
+  const W=Math.max(rect.width||640, canvas.offsetWidth||640);
+  const H=Math.max(rect.height||220, canvas.offsetHeight||220);
+  canvas.style.width='100%';canvas.style.height='100%';
+  canvas.style.display='block';
+
+  fpvScene=new THREE.Scene();
+  fpvScene.background=new THREE.Color(0x061018);
+  fpvScene.fog=new THREE.Fog(0x061018,60,280);
+
+  fpvCamera=new THREE.PerspectiveCamera(70,W/H,.1,600);
+  fpvCamera.position.set(0,8,0);
+
+  fpvRenderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,preserveDrawingBuffer:true});
+  fpvRenderer.setSize(W,H,false);// false = ne pas toucher le style CSS
+  fpvRenderer.setPixelRatio(Math.min(devicePixelRatio,2));
+
+  // Sky gradient via hemisphere light
+  fpvScene.add(new THREE.HemisphereLight(0x0a2040,0x081008,0.8));
+  const sun=new THREE.DirectionalLight(0x334455,.6);sun.position.set(50,80,30);fpvScene.add(sun);
+  const ambFog=new THREE.AmbientLight(0x040810,.5);fpvScene.add(ambFog);
+
+  // Stars
+  const starGeo=new THREE.BufferGeometry();const starV=[];
+  for(let i=0;i<800;i++){starV.push((Math.random()-.5)*400,(20+Math.random()*150),(Math.random()-.5)*400)}
+  starGeo.setAttribute('position',new THREE.Float32BufferAttribute(starV,3));
+  fpvScene.add(new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xaaccff,size:.4,transparent:true,opacity:.7})));
+
+  // Terrain
+  buildTerrain();
+  // Buildings
+  buildCityscape();
+  // Trees
+  buildTrees();
+
+  // Drone mesh (visible in world as reference — small)
+  const dg=new THREE.OctahedronGeometry(.4,0);
+  const dm=new THREE.MeshPhongMaterial({color:0x00e676,emissive:0x00e676,emissiveIntensity:.8});
+  fpvDroneMesh=new THREE.Mesh(dg,dm);
+  fpvDroneMesh.visible=false;// Camera IS the drone, no need to show self
+  fpvScene.add(fpvDroneMesh);
+
+  function fpvLoop(){
+    requestAnimationFrame(fpvLoop);
+    updateFPVCamera();
+    fpvRenderer.render(fpvScene,fpvCamera);
+    updateFPVHUD();
+  }
+  fpvLoop();
+
+  function resizeFPV(){
+    const r=document.getElementById('pcb').getBoundingClientRect();
+    const W2=Math.max(r.width||640,1),H2=Math.max(r.height||220,1);
+    fpvCamera.aspect=W2/H2;fpvCamera.updateProjectionMatrix();fpvRenderer.setSize(W2,H2,false);
+  }
+  window.addEventListener('resize',resizeFPV);
+  // Pas de setTimeout resize — évite de détruire le contexte WebGL après loadFleet
+  // resizeFPV();// Appelé uniquement sur window resize
+}
+
+function buildTerrain(){
+  const size=512,segs=80;
+  const geo=new THREE.PlaneGeometry(size,size,segs,segs);
+  geo.rotateX(-Math.PI/2);
+  const pos=geo.attributes.position;
+  for(let i=0;i<pos.count;i++){
+    const x=pos.getX(i),z=pos.getZ(i);
+    // Multi-octave noise approximation
+    const h=
+      Math.sin(x*.015)*Math.cos(z*.012)*12+
+      Math.sin(x*.04+1.2)*Math.cos(z*.035+.7)*5+
+      Math.sin(x*.1+2)*Math.cos(z*.09+1.4)*2+
+      Math.sin(x*.25)*Math.cos(z*.2)*.5;
+    pos.setY(i,h);
+  }
+  pos.needsUpdate=true;geo.computeVertexNormals();
+  const mat=new THREE.MeshLambertMaterial({color:0x0d2010,wireframe:false});
+  // Wireframe overlay
+  const wf=new THREE.LineSegments(new THREE.WireframeGeometry(geo),new THREE.LineBasicMaterial({color:0x00e5ff,transparent:true,opacity:.07}));
+  fpvScene.add(new THREE.Mesh(geo,mat));fpvScene.add(wf);
+}
+
+function buildCityscape(){
+  const zones=[{cx:60,cz:-40,n:12},{cx:-80,cz:60,n:8},{cx:20,cz:100,n:10},{cx:-50,cz:-80,n:6}];
+  zones.forEach(z=>{
+    for(let i=0;i<z.n;i++){
+      const h=8+Math.random()*30,w=4+Math.random()*8,d=4+Math.random()*8;
+      const geo=new THREE.BoxGeometry(w,h,d);
+      const mat=new THREE.MeshLambertMaterial({color:0x081828,wireframe:false});
+      const mesh=new THREE.Mesh(geo,mat);
+      mesh.position.set(z.cx+(Math.random()-.5)*40,h/2,z.cz+(Math.random()-.5)*40);
+      // Wireframe edge
+      const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo),new THREE.LineBasicMaterial({color:0x00e5ff,transparent:true,opacity:.25}));
+      mesh.add(edges);
+      // Window lights
+      const wg=new THREE.BoxGeometry(w+.1,h+.1,d+.1);
+      const wm=new THREE.MeshBasicMaterial({color:0x001a33,transparent:true,opacity:.0,wireframe:true});
+      fpvScene.add(mesh);
+      fpvBuildings.push(mesh);
+    }
+  });
+}
+
+function buildTrees(){
+  for(let i=0;i<60;i++){
+    const h=2+Math.random()*4;
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.15,.2,h,5),new THREE.MeshLambertMaterial({color:0x051005}));
+    const top=new THREE.Mesh(new THREE.ConeGeometry(1.2+Math.random()*.8,h*.8,6),new THREE.MeshLambertMaterial({color:0x071a07}));
+    top.position.y=h*.6;trunk.add(top);
+    // Edge glow
+    trunk.add(new THREE.LineSegments(new THREE.EdgesGeometry(trunk.geometry),new THREE.LineBasicMaterial({color:0x00e5ff,transparent:true,opacity:.1})));
+    const angle=Math.random()*Math.PI*2,dist=30+Math.random()*180;
+    trunk.position.set(Math.cos(angle)*dist,h/2,Math.sin(angle)*dist);
+    fpvScene.add(trunk);
+  }
+}
+
+/* ── FPV Camera follows selected drone ── */
+function updateFPVTarget(){
+  // Called when drone selected — teleport camera smoothly
+}
+
+let fpvVelX=0,fpvVelZ=0,fpvAlt=8;
+// Cible courante de la caméra FPV (lerp smooth)
+let fpvTargetX=0,fpvTargetZ=0,fpvTargetY=8;
+
+function updateFPVCamera(){
+  if(!selectedId||!droneData[selectedId]){
+    fpvCamera.position.y+=(.5-fpvCamera.position.y)*.02;
+    return;
+  }
+  const d=droneData[selectedId];
+  // Monde FPV: coords ÷5 (terrain 512 unités, drones jusqu'à ~400 unités on-chain)
+  fpvTargetX=d.posX/5;
+  fpvTargetZ=d.posY/5;
+  fpvTargetY=Math.max(2,d.alt/15);
+
+  // Lerp fluide
+  fpvCamera.position.x+=(fpvTargetX-fpvCamera.position.x)*.06;
+  fpvCamera.position.z+=(fpvTargetZ-fpvCamera.position.z)*.06;
+  fpvCamera.position.y+=(fpvTargetY-fpvCamera.position.y)*.05;
+
+  // Direction de regard selon cap du drone
+  const hdg=d.heading||0;
+  fpvTargetYaw=hdg;
+  fpvYaw+=(fpvTargetYaw-fpvYaw)*.06;
+  fpvRoll+=(fpvTargetRoll-fpvRoll)*.04;
+
+  // Rotation via Euler — ordre YXZ stable
+  fpvCamera.rotation.order='YXZ';
+  fpvCamera.rotation.y=fpvYaw;
+  fpvCamera.rotation.x=fpvPitch;
+  fpvCamera.rotation.z=fpvRoll*0.08;// Roll subtil
+}
+
+function updateFPVHUD(){
+  const d=selectedId&&droneData[selectedId]?droneData[selectedId]:null;
+  if(d){
+    const moving=d.status&&d.status.startsWith('Cap:');
+    const spd=moving?Math.floor(45+Math.sin(Date.now()*.003)*8):0;
+    document.getElementById('fpv-tl').innerHTML=`UNI-${String(selectedId).padStart(3,'0')}<br>ALT: ${d.alt}m<br>VIT: ${spd} km/h`;
+    document.getElementById('fpv-tr').innerHTML=`CAP: ${d.status||'—'}<br>TEMP: ${d.tmp}°C<br>BAT: ${d.bat}%`;
+    // Horizon tilt
+    const roll=fpvRoll*15;
+    document.getElementById('fpv-horizon').style.transform=`rotate(${roll}deg)`;
+    // Lock reticle
+    const locked=d.status==='TARGET_LOCKED';
+    document.getElementById('lock-reticle').style.display=locked?'block':'none';
+    // Compass
+    const caps=['N','NE','E','SE','S','SO','O','NO'];
+    const heading=((fpvYaw*180/Math.PI)%360+360)%360;
+    const compassOffset=-(heading/360)*320;
+    document.getElementById('fpv-compass-inner').style.left=(80+compassOffset)+'px';
+  }else{
+    document.getElementById('fpv-tl').innerHTML='UNI-???<br>ALT: —<br>VIT: —';
+    document.getElementById('fpv-tr').innerHTML='CAP: —<br>TEMP: —<br>BAT: —';
+  }
+}
+
+/* ══ KEYBOARD ══ */
+const KMAP={z:'N',arrowup:'N',s:'S',arrowdown:'S',d:'E',arrowright:'E',q:'O',arrowleft:'O',a:'UP',e:'DOWN'};
+function bindKeys(){
+  document.addEventListener('keydown',ev=>{
+    // Ignore répétition native OS (touche maintenue)
+    if(ev.repeat)return;
+    if(['INPUT','SELECT','TEXTAREA'].includes(ev.target.tagName))return;
+    const k=ev.key.toLowerCase();
+    keyDown.add(k);
+    if(k==='tab'){ev.preventDefault();cycleDrone();return}
+    if(k==='r'){cmdRecon();return}
+    if(k==='f'){cmdStop();return}
+    if(k==='enter'){ev.preventDefault();commitPosition();return}
+    const dir=KMAP[k];
+    if(dir&&selectedId){
+      ev.preventDefault();
+      moveBeep();
+      // Mouvement visuel immédiat — ZQSD ne déclenche AUCUNE TX
+      triggerMoveVisual(dir);
+      _pendingPos={dir};// Mémorise dernière direction pour ENTER
+      // Répétition visuelle fluide toutes les 150ms (sans TX)
+      if(!keyTimer)keyTimer=setInterval(()=>{
+        if(keyDown.has(k)&&selectedId){moveBeep();triggerMoveVisual(dir)}
+      },150);
+    }
+  });
+  document.addEventListener('keyup',ev=>{
+    keyDown.delete(ev.key.toLowerCase());
+    if(keyTimer&&[...keyDown].every(k=>!KMAP[k])){
+      clearInterval(keyTimer);keyTimer=null;
+      // Mouvement visuel terminé — pas de TX ici, ENTER pour valider
+    }
+  });
+}
+
+// Position on-chain en attente de validation (ENTER)
+let _pendingPos=null,_txPending=false;
+
+// Appelé par ENTER — envoie la position actuelle on-chain
+async function commitPosition(){
+  if(!selectedId||!contract||_txPending)return;
+  const d=droneData[selectedId];
+  if(!d||!d.isActive||d.isDeleted)return;
+  if(!_pendingPos){toast('w','AUCUN MOUVEMENT','Déplacez le drone avec ZQSD d\'abord');return}
+  _txPending=true;
+  const {dir}=_pendingPos;_pendingPos=null;
+  // Visual indicator
+  addTxFeed('p','COMMIT',`Validation position #${selectedId}`,null);
+  toast('info','VALIDATION ON-CHAIN',`Unité #${selectedId} → envoi sur Ethereum`);
+  try{
+    const tx=await contract.moveDrone(selectedId,dir);
+    addTxFeed('p','MOUVEMENT',`#${selectedId} → ${dir}`,tx.hash);
+    await tx.wait();
+    addTxFeed('s','MOUVEMENT ✓',`#${selectedId} → ${dir}`,tx.hash);
+    opsCount++;document.getElementById('rs-o').textContent=opsCount;
+    addTL('MOUVEMENT ✓',`#${selectedId} → ${dir} — ${tx.hash.slice(0,10)}…`,'green');
+    toast('s','POSITION VALIDÉE',`Unité #${selectedId} gravée sur la blockchain`);
+  }catch(e){
+    const m=(e.reason||e.message||'Erreur').slice(0,50);
+    addTxFeed('e','MOUVEMENT ✗',m,null);
+    toast('e','TX ÉCHOUÉE',m);
+  }
+  _txPending=false;
+  const pi=document.getElementById('sh-pending');if(pi)pi.style.display='none';
+  const keh=document.getElementById('kb-enter-hint');if(keh)keh.style.color='rgba(255,214,0,.5)';
+}
+
+function cycleDrone(){
+  const ids=Object.keys(droneData).map(Number).filter(id=>droneData[id].isActive&&!droneData[id].isDeleted);
+  if(!ids.length)return;
+  const next=ids[(ids.indexOf(selectedId)+1)%ids.length];
+  selectDrone(next);toast('info','DRONE SÉLECTIONNÉ',`UNI-${String(next).padStart(3,'0')} // ${droneData[next].model}`);
+}
+
+// Mouvement purement visuel — AUCUNE TX blockchain — appuie ENTER pour valider
+function triggerMoveVisual(dir){
+  if(!selectedId)return;
+  const d=droneData[selectedId];if(!d||!d.isActive||d.isDeleted)return;
+  const step=10;
+  if(dir==='N')d.posY+=step;else if(dir==='S')d.posY-=step;
+  else if(dir==='E')d.posX+=step;else if(dir==='O')d.posX-=step;
+  else if(dir==='UP')d.alt+=20;else if(dir==='DOWN')d.alt=Math.max(10,d.alt-20);
+  const hdgMap={N:Math.PI,S:0,E:-Math.PI/2,O:Math.PI/2,UP:0,DOWN:0};
+  d.heading=hdgMap[dir]||0;
+  d.status='Cap: '+dir;
+  if(dronesMeshes[selectedId]){
+    const m=dronesMeshes[selectedId];
+    m.position.x=d.posX/10;m.position.z=d.posY/10;
+    m.userData.bY=Math.max(.3,d.alt/80);
+    addTrail(selectedId,m.position.clone());
+  }
+  updateSelHUD();
+  // Indicateur "position en attente de validation"
+  const pi=document.getElementById('sh-pending');
+  if(pi)pi.style.display='block';
+  const keh=document.getElementById('kb-enter-hint');
+  if(keh)keh.style.color='rgba(255,214,0,.9)';
+}
+
+/* ══ TX WRAPPER ══ */
+async function withTx(label,desc,fn){
+  addTxFeed('p',label,desc,null);addTL(label,desc,'cyan');opsCount++;document.getElementById('rs-o').textContent=opsCount;
+  try{const tx=await fn();addTxFeed('p',label,'Confirmation...',tx.hash);await tx.wait();
+    addTxFeed('s',label+' ✓',desc,tx.hash);toast('s',label+' CONFIRMÉ','Transaction validée');addTL(label+' ✓',tx.hash.slice(0,10)+'…','green');loadFleet();
+  }catch(e){const m=(e.reason||e.message||'Erreur').slice(0,60);addTxFeed('e',label+' ✗',m,null);toast('e','TX ÉCHOUÉE',m)}
+}
+
+/* ══ COMMANDS ══ */
+async function register(){const n=document.getElementById('rn').value.trim(),r=document.getElementById('rr').value;if(!n){toast('w','CHAMP REQUIS','Saisir un identifiant');return}await withTx('ENREGISTREMENT','Matricule: '+n,()=>contract.registerUser(n,r));setTimeout(()=>location.reload(),3000)}
+async function addDrone(){const m=document.getElementById('dm').value.trim(),s=document.getElementById('ds').value.trim();if(!m){toast('w','CHAMP REQUIS','Saisir un modèle');return}await withTx('DÉPLOIEMENT','Unité: '+m,()=>contract.addDrone(m,s||"En attente d'ordres"))}
+async function cmdRecon(){if(!selectedId){toast('w','AUCUN DRONE','Sélectionnez une unité');return}await withTx('RECONNAISSANCE','Scan — Unité #'+selectedId,()=>contract.runReconnaissance(selectedId));radarPing();setTimeout(radarPing,300);setTimeout(radarPing,600)}
+async function cmdStop(){if(!selectedId){toast('w','AUCUN DRONE','Sélectionnez une unité');return}await withTx('STOP','Unité #'+selectedId,()=>contract.stopAction(selectedId))}
+async function cmdWaypoint(){if(!selectedId){toast('w','AUCUN DRONE','Sélectionnez une unité');return}const x=parseInt(document.getElementById('wp-x').value)||0,y=parseInt(document.getElementById('wp-y').value)||0,a=parseInt(document.getElementById('wp-a').value)||100;await withTx('WAYPOINT',`#${selectedId} → (${x},${y}) ALT:${a}m`,()=>contract.moveToWaypoint(selectedId,x,y,a));lockBeep()}
+async function cmdLockTarget(){if(!selectedId){toast('w','AUCUN DRONE','Sélectionnez une unité');return}const x=parseInt(document.getElementById('tg-x').value)||0,y=parseInt(document.getElementById('tg-y').value)||0;await withTx('INTERCEPTION',`#${selectedId} 🎯 (${x},${y})`,()=>contract.lockTarget(selectedId,x,y));lockBeep();toast('p','CIBLE VERROUILLÉE',`Unité #${selectedId} → (${x},${y})`)}
+async function setFormation(type){if(!selectedId){toast('w','CHEF REQUIS','Sélectionnez le drone chef');return}const L=['LIBRE','FORMATION V','FORMATION LIGNE','FORMATION CERCLE'];await withTx('FORMATION',`${L[type]} — Chef #${selectedId}`,()=>contract.setFormation(type,selectedId));document.querySelectorAll('.fb').forEach((b,i)=>b.classList.toggle('active',i===type));toast('p','FORMATION',L[type]);beep(440,.1,'square',.06);setTimeout(()=>beep(550,.1,'square',.06),120)}
+async function cmdSwarm(){if(!selectedId){toast('w','AUCUN DRONE','Sélectionnez le chef');return}await withTx('ESSAIM','Chef: Unité #'+selectedId,()=>contract.toggleSwarm(selectedId));swarmActive=!swarmActive;updateSwarmUI();if(swarmActive){toast('p','ESSAIM ACTIVÉ',`Chef: UNI-${String(selectedId).padStart(3,'0')}`);beep(330,.2,'sawtooth',.06)}else toast('info','ESSAIM DÉSACTIVÉ','Mode autonome')}
+async function cmdEmergency(){if(!selectedId){toast('w','AUCUN DRONE','Sélectionnez une unité');return}if(!confirm('⚠ URGENCE: Rappel immédiat unité #'+selectedId+' ?'))return;await withTx('URGENCE','Rappel — Unité #'+selectedId,()=>contract.toggleMaintenance(selectedId));alertSiren()}
+function updateSwarmUI(){document.getElementById('swarm-badge').style.display=swarmActive?'flex':'none';document.getElementById('btn-swarm').textContent=swarmActive?'⬡ STOP ESS.':'⬡ ESSAIM'}
+
+/* ══ TX FEED ══ */
+function addTxFeed(type,label,desc,hash){
+  const feed=document.getElementById('txf');if(feed.querySelector('.empty'))feed.innerHTML='';
+  const now=new Date().toLocaleTimeString('fr-FR',{hour12:false});
+  const ic={p:'⏳',s:'✓',e:'✗'};
+  const item=document.createElement('div');item.className='txi';
+  item.innerHTML=`<div class="txr"><span class="txt ${type}">${ic[type]||'·'} ${label}</span><span class="txtime">${now}</span></div><div class="txd">${desc}</div>${hash?`<div class="txh">${hash}</div>`:''}`;
+  feed.insertBefore(item,feed.firstChild);while(feed.children.length>10)feed.removeChild(feed.lastChild);
+}
+
+/* ══ TIMELINE ══ */
+function addTL(action,detail,color='cyan'){
+  const el=document.getElementById('tl');if(el.querySelector('.empty'))el.innerHTML='';
+  const now=new Date().toLocaleTimeString('fr-FR',{hour12:false});
+  const cm={cyan:'var(--cyan)',green:'var(--green)',red:'var(--red)',purple:'var(--purple)'};
+  const c=cm[color]||'var(--cyan)';
+  const item=document.createElement('div');item.className='tli';
+  item.innerHTML=`<div class="tld" style="border-color:${c};box-shadow:0 0 5px ${c}"></div><div class="tlc"><div class="tla" style="color:${c}">${action}</div><div class="tldt">${detail}</div><div class="tlti">${now}</div></div>`;
+  el.insertBefore(item,el.firstChild);while(el.children.length>12)el.removeChild(el.lastChild);
+}
+
+/* ══ TOAST ══ */
+function toast(type,title,msg){
+  const c=document.getElementById('tc');const ic={s:'✓',e:'✗',w:'⚠',p:'⬡',info:'ℹ'};
+  const t=document.createElement('div');t.className=`toast ${type}`;
+  t.innerHTML=`<div style="font-size:13px;flex-shrink:0">${ic[type]||'ℹ'}</div><div><div class="t-t">${title}</div><div class="t-m">${msg}</div></div>`;
+  c.appendChild(t);setTimeout(()=>{t.style.transition='all .3s';t.style.opacity='0';t.style.transform='translateX(16px)';setTimeout(()=>t.remove(),300)},4000);
+}
+
+/* ══ INIT ══ */
+window.addEventListener('DOMContentLoaded',runBoot);
+</script>
+</body>
+</html>
